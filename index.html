@@ -1,0 +1,218 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Leaflet Raum-Koordinaten Helfer</title>
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+    crossorigin=""
+  />
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: #f6f7f9;
+      color: #1f2937;
+    }
+    .layout {
+      display: grid;
+      grid-template-columns: 1fr 320px;
+      height: 100vh;
+    }
+    #map {
+      width: 100%;
+      height: 100%;
+      background: #dfe3e8;
+    }
+    .panel {
+      border-left: 1px solid #d1d5db;
+      background: #ffffff;
+      padding: 16px;
+      box-sizing: border-box;
+      overflow: auto;
+    }
+    .row {
+      margin-bottom: 12px;
+    }
+    input, button, textarea {
+      width: 100%;
+      box-sizing: border-box;
+      padding: 8px;
+      font-size: 14px;
+    }
+    button {
+      cursor: pointer;
+    }
+    textarea {
+      min-height: 180px;
+      resize: vertical;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+    }
+    .hint {
+      font-size: 13px;
+      color: #4b5563;
+      line-height: 1.4;
+    }
+    #status {
+      font-size: 13px;
+      color: #1d4ed8;
+      min-height: 18px;
+    }
+  </style>
+</head>
+<body>
+  <div class="layout">
+    <div id="map"></div>
+    <aside class="panel">
+      <div class="row">
+        <strong>Raum erfassen (4 Punkte)</strong>
+      </div>
+      <div class="row">
+        <label for="roomName">Raumname</label>
+        <input id="roomName" type="text" placeholder="z. B. Raum A1" />
+      </div>
+      <div class="row">
+        <button id="newRoomBtn" type="button">Neuen Raum starten</button>
+      </div>
+      <div class="row hint">
+        Klicke danach 4 Ecken im Uhrzeigersinn auf die Karte.<br />
+        Nach dem 4. Klick wird das Polygon gespeichert und als JSON ausgegeben.
+      </div>
+      <div id="status" class="row" aria-live="polite"></div>
+      <div class="row">
+        <button id="clearBtn" type="button">Alles löschen</button>
+      </div>
+      <div class="row">
+        <label for="output">Ausgabe (GeoJSON-ähnlich)</label>
+        <textarea id="output" readonly></textarea>
+      </div>
+    </aside>
+  </div>
+
+  <script
+    src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+    integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+    crossorigin=""
+  ></script>
+  <script>
+    const COORDINATE_PRECISION = 2;
+    // Passe diese Werte an deine PNG-Datei an (Pixelbreite/-höhe), damit die Koordinaten stimmen.
+    const imageUrl = "./image.png";
+    const imageWidth = 2000;
+    const imageHeight = 2000;
+
+    const map = L.map("map", {
+      crs: L.CRS.Simple,
+      minZoom: -3
+    });
+
+    const bounds = [[0, 0], [imageHeight, imageWidth]];
+    L.imageOverlay(imageUrl, bounds).addTo(map);
+    map.fitBounds(bounds);
+
+    let currentRoom = null;
+    let currentPoints = [];
+    let roomCounter = 1;
+    let tempLayer = null;
+    const finishedLayers = [];
+    const finishedRooms = [];
+
+    const roomNameInput = document.getElementById("roomName");
+    const output = document.getElementById("output");
+    const status = document.getElementById("status");
+    const newRoomBtn = document.getElementById("newRoomBtn");
+    const clearBtn = document.getElementById("clearBtn");
+
+    function updateOutput() {
+      output.value = JSON.stringify(finishedRooms, null, 2);
+    }
+
+    function redrawTempLayer() {
+      if (tempLayer) {
+        map.removeLayer(tempLayer);
+      }
+      if (currentPoints.length > 0) {
+        tempLayer = L.polygon(currentPoints, {
+          color: "#3b82f6",
+          weight: 2,
+          fillOpacity: 0.15
+        }).addTo(map);
+      }
+    }
+
+    function resetAll() {
+      currentRoom = null;
+      currentPoints = [];
+      finishedRooms.splice(0);
+      output.value = "";
+
+      if (tempLayer) {
+        map.removeLayer(tempLayer);
+        tempLayer = null;
+      }
+      finishedLayers.forEach((layer) => map.removeLayer(layer));
+      finishedLayers.splice(0);
+    }
+
+    newRoomBtn.addEventListener("click", () => {
+      const name = roomNameInput.value.trim();
+      currentRoom = name || `Raum-${roomCounter}`;
+      if (!name) {
+        roomCounter += 1;
+      }
+      currentPoints = [];
+      redrawTempLayer();
+      status.textContent = `Aktiv: ${currentRoom}. Bitte 4 Ecken anklicken.`;
+      console.log(`Neuer Raum gestartet: ${currentRoom}`);
+    });
+
+    clearBtn.addEventListener("click", () => {
+      resetAll();
+      status.textContent = "Zurückgesetzt. Du kannst einen neuen Raum starten.";
+    });
+
+    map.on("click", (event) => {
+      if (!currentRoom) {
+        status.textContent = "Bitte zuerst 'Neuen Raum starten' klicken.";
+        return;
+      }
+
+      const point = [
+        Number(event.latlng.lat.toFixed(COORDINATE_PRECISION)),
+        Number(event.latlng.lng.toFixed(COORDINATE_PRECISION))
+      ];
+      currentPoints.push(point);
+      status.textContent = `${currentRoom}: ${currentPoints.length}/4 Punkte gesetzt.`;
+      redrawTempLayer();
+
+      if (currentPoints.length === 4) {
+        const roomFeature = {
+          name: currentRoom,
+          polygon: [currentPoints]
+        };
+        finishedRooms.push(roomFeature);
+        console.log("Raum erfasst:", roomFeature);
+        updateOutput();
+        status.textContent = `${currentRoom} gespeichert. Starte bei Bedarf den nächsten Raum.`;
+
+        const finalLayer = L.polygon(currentPoints, {
+          color: "#16a34a",
+          weight: 2,
+          fillOpacity: 0.12
+        }).addTo(map);
+        finishedLayers.push(finalLayer);
+
+        currentRoom = null;
+        currentPoints = [];
+        if (tempLayer) {
+          map.removeLayer(tempLayer);
+          tempLayer = null;
+        }
+      }
+    });
+  </script>
+</body>
+</html>
