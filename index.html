@@ -56,6 +56,11 @@
       color: #4b5563;
       line-height: 1.4;
     }
+    #status {
+      font-size: 13px;
+      color: #1d4ed8;
+      min-height: 18px;
+    }
   </style>
 </head>
 <body>
@@ -76,6 +81,7 @@
         Klicke danach 4 Ecken im Uhrzeigersinn auf die Karte.<br />
         Nach dem 4. Klick wird der Polygon gespeichert und als JSON ausgegeben.
       </div>
+      <div id="status" class="row" aria-live="polite"></div>
       <div class="row">
         <button id="clearBtn" type="button">Alles löschen</button>
       </div>
@@ -115,6 +121,7 @@
 
     const roomNameInput = document.getElementById("roomName");
     const output = document.getElementById("output");
+    const status = document.getElementById("status");
     const newRoomBtn = document.getElementById("newRoomBtn");
     const clearBtn = document.getElementById("clearBtn");
 
@@ -154,16 +161,18 @@
       currentRoom = name || `Raum-${finishedRooms.length + 1}`;
       currentPoints = [];
       redrawTempLayer();
+      status.textContent = `Aktiv: ${currentRoom}. Bitte 4 Ecken anklicken.`;
       console.log(`Neuer Raum gestartet: ${currentRoom}`);
     });
 
     clearBtn.addEventListener("click", () => {
       resetAll();
+      status.textContent = "Zurückgesetzt. Du kannst einen neuen Raum starten.";
     });
 
     map.on("click", (event) => {
       if (!currentRoom) {
-        alert("Bitte zuerst 'Neuen Raum starten' klicken.");
+        status.textContent = "Bitte zuerst 'Neuen Raum starten' klicken.";
         return;
       }
 
@@ -172,6 +181,7 @@
         Number(event.latlng.lng.toFixed(COORDINATE_PRECISION))
       ];
       currentPoints.push(point);
+      status.textContent = `${currentRoom}: ${currentPoints.length}/4 Punkte gesetzt.`;
       redrawTempLayer();
 
       if (currentPoints.length === 4) {
@@ -182,6 +192,7 @@
         finishedRooms.push(roomFeature);
         console.log("Raum erfasst:", roomFeature);
         updateOutput();
+        status.textContent = `${currentRoom} gespeichert. Starte bei Bedarf den nächsten Raum.`;
 
         const finalLayer = L.polygon(currentPoints, {
           color: "#16a34a",
