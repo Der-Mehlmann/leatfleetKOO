@@ -159,7 +159,10 @@
 
     newRoomBtn.addEventListener("click", () => {
       const name = roomNameInput.value.trim();
-      currentRoom = name || `Raum-${roomCounter++}`;
+      currentRoom = name || `Raum-${roomCounter}`;
+      if (!name) {
+        roomCounter += 1;
+      }
       currentPoints = [];
       redrawTempLayer();
       status.textContent = `Aktiv: ${currentRoom}. Bitte 4 Ecken anklicken.`;
