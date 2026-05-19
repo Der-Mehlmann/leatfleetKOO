@@ -92,6 +92,8 @@
     crossorigin=""
   ></script>
   <script>
+    const COORDINATE_PRECISION = 2;
+    // Passe diese Werte an deine PNG-Datei an (Pixelbreite/-höhe), damit die Koordinaten stimmen.
     const imageUrl = "./image.png";
     const imageWidth = 2000;
     const imageHeight = 2000;
@@ -108,6 +110,7 @@
     let currentRoom = null;
     let currentPoints = [];
     let tempLayer = null;
+    const finishedLayers = [];
     const finishedRooms = [];
 
     const roomNameInput = document.getElementById("roomName");
@@ -132,6 +135,20 @@
       }
     }
 
+    function resetAll() {
+      currentRoom = null;
+      currentPoints = [];
+      finishedRooms.length = 0;
+      output.value = "";
+
+      if (tempLayer) {
+        map.removeLayer(tempLayer);
+        tempLayer = null;
+      }
+      finishedLayers.forEach((layer) => map.removeLayer(layer));
+      finishedLayers.length = 0;
+    }
+
     newRoomBtn.addEventListener("click", () => {
       const name = roomNameInput.value.trim();
       currentRoom = name || `Raum-${finishedRooms.length + 1}`;
@@ -141,7 +158,7 @@
     });
 
     clearBtn.addEventListener("click", () => {
-      location.reload();
+      resetAll();
     });
 
     map.on("click", (event) => {
@@ -151,8 +168,8 @@
       }
 
       const point = [
-        Number(event.latlng.lat.toFixed(2)),
-        Number(event.latlng.lng.toFixed(2))
+        Number(event.latlng.lat.toFixed(COORDINATE_PRECISION)),
+        Number(event.latlng.lng.toFixed(COORDINATE_PRECISION))
       ];
       currentPoints.push(point);
       redrawTempLayer();
@@ -166,11 +183,12 @@
         console.log("Raum erfasst:", roomFeature);
         updateOutput();
 
-        L.polygon(currentPoints, {
+        const finalLayer = L.polygon(currentPoints, {
           color: "#16a34a",
           weight: 2,
           fillOpacity: 0.12
         }).addTo(map);
+        finishedLayers.push(finalLayer);
 
         currentRoom = null;
         currentPoints = [];
