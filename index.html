@@ -79,7 +79,7 @@
       </div>
       <div class="row hint">
         Klicke danach 4 Ecken im Uhrzeigersinn auf die Karte.<br />
-        Nach dem 4. Klick wird der Polygon gespeichert und als JSON ausgegeben.
+        Nach dem 4. Klick wird das Polygon gespeichert und als JSON ausgegeben.
       </div>
       <div id="status" class="row" aria-live="polite"></div>
       <div class="row">
@@ -115,6 +115,7 @@
 
     let currentRoom = null;
     let currentPoints = [];
+    let roomCounter = 1;
     let tempLayer = null;
     const finishedLayers = [];
     const finishedRooms = [];
@@ -145,7 +146,7 @@
     function resetAll() {
       currentRoom = null;
       currentPoints = [];
-      finishedRooms.length = 0;
+      finishedRooms.splice(0);
       output.value = "";
 
       if (tempLayer) {
@@ -153,12 +154,12 @@
         tempLayer = null;
       }
       finishedLayers.forEach((layer) => map.removeLayer(layer));
-      finishedLayers.length = 0;
+      finishedLayers.splice(0);
     }
 
     newRoomBtn.addEventListener("click", () => {
       const name = roomNameInput.value.trim();
-      currentRoom = name || `Raum-${finishedRooms.length + 1}`;
+      currentRoom = name || `Raum-${roomCounter++}`;
       currentPoints = [];
       redrawTempLayer();
       status.textContent = `Aktiv: ${currentRoom}. Bitte 4 Ecken anklicken.`;
